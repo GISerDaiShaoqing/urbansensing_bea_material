@@ -1,0 +1,147 @@
+---
+title: "《城市调查》课程上机实践——基于R语言的街景图像天空率与绿视率简易计算"
+author: 戴劭勍
+output: 
+  html_notebook: 
+    toc: true
+---
+
+# 1 街景图像最常用的两个指标：天空率与绿视率
+
+$$Sky\ view\ index = \frac{number\ of\ sky\ pixel}{number\ of\ the\ total\ pixel\ in\ single\ street\ view\ image}$$
+
+$$Green\ view\ index = \frac{number\ of\ green\ pixel}{number\ of\ the\ total\ pixel\ in\ single\ street\ view\ image}$$
+
+# 2 R语言及Rstudio简介
+
+```以下相关简介文字为Kimi生成```
+
+R语言是一种开源的编程语言，专为统计计算和图形而设计。它由统计学家 Ross Ihaka 和 Robert Gentleman于1993年开发，并由全球开发者社区不断扩展。R语言支持多种操作系统，提供丰富的统计分析方法，包括线性回归、时间序列分析、聚类分析等，可处理各种数据类型，如表格数据、空间数据等。它还具备强大的数据可视化功能，通过 base R和扩展包（如ggplot2、lattice）生成高质量图表，包括散点图、直方图、箱线图等。此外，R语言拥有庞大且活跃的社区，提供大量免费资源和支持，可通过 CRAN获取数千个扩展包，以增强其功能。R语言被广泛应用于学术研究、数据分析、金融建模、生物信息学等多个领域，助力用户高效完成复杂数据任务。
+
+
+
+[R语言官网](https://www.r-project.org/)
+
+RStudio 是一款集成开发环境（IDE），专为 R 语言设计，于 2009 年由 RStudio团队首次发布。它提供了一个用户友好的界面，包含代码编辑器、工作区管理、图形显示和帮助文档等功能，支持多操作系统，兼容R的所有版本和包。RStudio的免费社区版适合各类用户，还有专业版和服务器版满足高级需求。它凭借直观界面和丰富功能，极大地提升了 R 编程效率，成为分析师、研究人员和数据科学家的首选工具，推动了 R 语言的普及。
+
+[官网链接](https://posit.co/downloads/)
+
+相关R语言资源介绍
+
+>- [国内最大的R语言社区——统计之都](https://cos.name/)
+>- [应用统计学与R语言实现学习笔记(含分析源码)](https://github.com/GISerDaiShaoqing/Note-of-Applied-Statistics-with-R)
+>- [应用统计学与R语言实现学习笔(在线电子书)](https://gisersqdai.top/Note-of-Applied-Statistics-with-R-Book/)
+
+
+# 3 相关的R语言及Rstudio安装
+
+Windows下R语言及相关的软件安装比较简单。只需要从下面的几个链接下载对应的exe安装包，一路安装到底即可。注意R语言版本和Rtools版本要对应。Rtools是一个辅助安装R语言包的工具。
+
+>- [R语言安装包下载链接](https://cran.r-project.org/bin/windows/base/)
+>- [Rtools安装包下载链接](https://cran.r-project.org/bin/windows/Rtools/)
+>- [Rstudio安装包下载链接](https://posit.co/downloads/)
+
+# 4 相关的R语言包安装
+
+安装好以上软件以后，打开Rstudio。经典的Rstudio是一个四等分界面。左上角是写代码/Rnotebook的地方，左下角是代码执行输出的终端平台，右上角R语言运行以后的数据集以及变量相关的查看窗口，右下角一般是路径，可视化图的结果，以及GUI的R语言包安装工具等。
+
+本次实践需要的包一共三个，分别是jpeg，countcolors与colorsdistance。
+
+有两种方式安装R语言包，一种是在左下角运行如下的code。
+
+```{r}
+install.packages('jpeg')
+install.packages('countcolors')
+install.packages('colordistance')
+```
+
+或者也可以在右下角的界面点击‘Packages→Install’，然后会跳出一个界面，输入包的名字即可。
+
+# 5 R语言代码实操
+
+载入包并读取街景图片。
+
+```{r}
+library(countcolors)
+library(colordistance)
+library(jpeg)
+
+svi <- readJPEG("E:/ShaoqingDai/project/urbansensing&bea_material/data/0_svibd_0_202002_0_0.jpg")
+```
+
+简单可视化街景图片。
+
+```{r}
+plot(as.raster(svi))
+```
+colordistance需要用loadImage来读取。将图片的RGB波段绘制在三维坐标图上，n为采样点（这样可以看到图片在RGB三个频道里的点分布是如何的），建议不超过20000便于提升速度。
+
+```{r}
+svii <- loadImage("E:/ShaoqingDai/project/urbansensing&bea_material/data/0_svibd_0_202002_0_0.jpg")
+
+plotPixels(svii, n = 5000)
+```
+本次采用的是较为简单的通过像素值来划定天空和绿色空间的方法。也就是我们设定我们感兴趣的要素的像素值取值范围，即可以快速提取相关的像素以及计算比例指标。这个计算是通过R语言包countcolors来操作的。这个包其实函数也很简单，主要的函数就是两个，一个是rectangularRange，一个是spericalRange。这两个函数的类型很像GIS中如何提取坐标。前者rectangularRange相当于在上面的三维图是画一个矩形，也就是给出左上角和右下角两个点的坐标值，来划定要提取的像素范围。后者的specialRange，顾名思义是球形取值像素，所以就是提供中心点的坐标值，以及取值半径，与空间分析中的缓冲区分析是类似的。至于怎么像素的RGB值怎么获取，在相关的图片处理软件或者word，powerpoint里都可以做到（用取色器）。这里提供例子给大家尝试。
+
+## 5.1 基于rectangularRange提取
+我们预设了一个阈值，这个阈值可以根据上面解释的。大家通过在相关软件里自己取色调整阈值。我们预设的范围基本是偏向于绿色的部分，所以是绿视率的简易计算。提取R波段在0.2-0.3之间，G波段在0.35-0.55之间，B波段在0.2-0.3之间的像素（注意这里RGB不是0-255，而是0-1，所以取完色大家记得除以255做转换）。
+
+```{r}
+lower.rectangular <- c(0.2, 0.35, 0.2)  
+upper.rectangular <- c(0.3, 0.55, 0.3)  
+
+# 指定掩盖色为红色
+svi.rectangular <- rectangularRange(svi, upper = c(0.55, 0.75, 0.4), lower = c(0.1, 0.25, 0), target.color = "red", plotting = T) 
+```
+
+得到图片中指定像素的比例：0.1120758。
+
+```{r}
+svi.rectangular$img.fraction 
+```
+## 5.2 基于spericalRange提取
+
+就如同上面所说。这里预设的阈值是提取某个建筑物上红色窗口。spercialRange的半径其实是一个比较敏感的参数。
+
+```{r}
+center.spherical <- c(255, 75, 75)/255
+svi.spherical <- sphericalRange(svi, center = center.spherical, radius = 0.2, target.color = 'blue', plotting = T)
+```
+
+半径太低。
+
+```{r}
+center.spherical <- c(255, 75, 75)/255
+svi.spherical <- sphericalRange(svi, center = center.spherical, radius = 0.05, target.color = 'blue', plotting = T)
+```
+
+半径过高。
+
+```{r}
+center.spherical <- c(255, 75, 75)/255
+svi.spherical <- sphericalRange(svi, center = center.spherical, radius = 0.4, target.color = 'blue', plotting = T)
+```
+
+得到图片中指定像素的比例：0.00103569。
+
+```{r}
+svi.spherical$img.fraction 
+```
+
+
+# 6 作业以及Q&A
+
+## 6.1 课后作业
+
+>- 本次课程数据集中给了另一张植被覆盖比较多的样例图像，可以就那张街景图像进行分割计算。
+>- 探索不同阈值提取相关要素。
+>- 结合R语言的for循环实现批量街景图像相关天空率与绿视率的计算。
+
+
+## 6.2 Q&A
+
+有任何问题可以通过邮件联系(shaoqing.dai\@outlook.com)。
+
+参考链接:
+
+[R countcolors包：像素级分析处理图片](https://blog.csdn.net/kMD8d5R/article/details/86519985)
