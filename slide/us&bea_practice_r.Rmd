@@ -30,7 +30,7 @@ RStudio 是一款集成开发环境（IDE），专为 R 语言设计，于 2009 
 
 >- [国内最大的R语言社区——统计之都](https://cos.name/)
 >- [应用统计学与R语言实现学习笔记(含分析源码)](https://github.com/GISerDaiShaoqing/Note-of-Applied-Statistics-with-R)
->- [应用统计学与R语言实现学习笔(在线电子书)](https://gisersqdai.top/Note-of-Applied-Statistics-with-R-Book/)
+>- [应用统计学与R语言实现学习笔记(在线电子书)](https://gisersqdai.top/Note-of-Applied-Statistics-with-R-Book/)
 
 
 # 3 相关的R语言及Rstudio安装
